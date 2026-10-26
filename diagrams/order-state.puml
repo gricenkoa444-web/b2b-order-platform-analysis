@@ -1,0 +1,18 @@
+@startuml
+title Жизненный цикл заказа
+[*] --> NEW
+NEW --> AWAITING_APPROVAL : сумма выше порога
+NEW --> CONFIRMED : лимит и резерв в порядке
+AWAITING_APPROVAL --> CONFIRMED : согласовано
+AWAITING_APPROVAL --> REJECTED : отклонено / лимит превышен
+CONFIRMED --> PARTIALLY_SHIPPED : отгружена часть
+CONFIRMED --> SHIPPED : отгружено полностью
+PARTIALLY_SHIPPED --> SHIPPED : отгружен остаток
+SHIPPED --> DELIVERED : доставка подтверждена
+NEW --> CANCELLED : отмена
+AWAITING_APPROVAL --> CANCELLED : отмена
+CONFIRMED --> CANCELLED : отмена
+REJECTED --> [*]
+DELIVERED --> [*]
+CANCELLED --> [*]
+@enduml

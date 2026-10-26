@@ -1,0 +1,41 @@
+@startuml
+title Создание B2B-заказа
+actor "Закупщик" as U
+participant "Storefront" as FE
+participant "Order Service" as OS
+database "Orders DB\n(orders + outbox)" as DB
+participant "Pricing" as PR
+participant "Credit Limit" as CL
+participant "Inventory" as INV
+queue "Kafka\norders.events" as K
+participant "ERP" as ERP
+participant "Notification" as NT
+
+U -> FE : Оформить заказ
+FE -> OS : POST /orders\nIdempotency-Key
+OS -> DB : поиск ключа
+alt ключ найден
+  OS --> FE : сохранённый результат
+else новый запрос
+  OS -> PR : цены по прайс-листу договора
+  PR --> OS : цены
+  OS -> CL : проверить лимит(сумма)
+  alt лимит превышен
+    CL --> OS : отказ
+    OS --> FE : 422 CREDIT_LIMIT_EXCEEDED
+  else лимит достаточен
+    OS -> INV : резерв остатков
+    alt резерв не выполнен
+      INV --> OS : нет остатков
+      OS --> FE : 422 INSUFFICIENT_STOCK
+    else резерв выполнен
+      OS -> DB : заказ + событие в outbox\n(одна транзакция)
+      OS --> FE : 201 Created
+    end
+  end
+end
+... асинхронно ...
+OS -> K : публикация из outbox
+K -> ERP : OrderConfirmed
+K -> NT : OrderConfirmed
+@enduml
